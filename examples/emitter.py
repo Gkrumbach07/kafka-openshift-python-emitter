@@ -6,5 +6,3 @@ def user_defined_function(args):
     data = json.loads(response.text)
     for loc in data["locations"]:
         yield loc
-
-
