@@ -51,7 +51,7 @@ def main(args):
     logging.info('beginning producer loop')
     if emitter_function is not None:
         for i in emitter_function(args):
-            producer.send(args.topic, i.encode())
+            producer.send(args.topic, i)
             time.sleep(1.0 / args.rate)
     logging.info('ending producer loop')
 
