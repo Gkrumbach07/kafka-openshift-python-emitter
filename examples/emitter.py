@@ -1,6 +1,6 @@
-import random
-
+import requests
 
 def user_defined_function(args):
-    while True:
-        yield str(random.random())
+    response = requests.request("GET", "http://backend:8080/tracked")
+    json.loads(response.text)
+
