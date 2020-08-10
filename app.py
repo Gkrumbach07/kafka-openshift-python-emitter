@@ -5,6 +5,7 @@ import os
 import time
 import types
 import urllib.request as urllib
+import json
 
 from kafka import KafkaProducer
 
