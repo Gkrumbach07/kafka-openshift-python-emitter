@@ -1,5 +1,5 @@
 # kafka-python-emitter
-A Python application skeleton for emitting to an Apache Kafka topic
+A Python application skeleton for emitting to an Apache Kafka topic using a cron job
 
 This application will simply take a source URI for a file and then send the
 lines from that file to the topic and brokers specified through the environment
@@ -18,20 +18,30 @@ using the [command line client tool](https://docs.okd.io/latest/cli_reference/ge
 
 ### Procedure
 
-* Launch the emitter using the following command
-  ```
-  oc new-app centos/python-36-centos7~https://gitlab.com/bones-brigade/kafka-python-emitter.git \
-    -e KAFKA_BROKERS=kafka:9092 \
-    -e KAFKA_TOPIC=bones-brigade \
-    -e SOURCE_URI=https://www.gutenberg.org/files/11/11-0.txt \
-    --name=emitter
-  ```
+* Launch the emitter using the following commands
+ ### Kafka Producer
+Next we create the Kafka producer. We will use a cron-job to accomplish this. We will run through a series of commands to create the build config and cron config files. First we need to create a service account that will run the cron job. The full in depth process can be found [here](https://github.com/clcollins/openshift-cronjob-example), but the following commands are all that is needed to deploy.
+```
+oc create serviceaccount py-cron
 
+oc create role pod-lister --verb=list --resource=pods,namespaces
+oc policy add-role-to-user pod-lister --role-namespace=py-cron system:serviceaccounts:py-cron:py-cron
+
+oc create imagestream py-cron
+
+oc create -f https://raw.githubusercontent.com/Gkrumbach07/kafka-openshift-python-emitter/master/buildConfig.yml
+
+oc set env BuildConfig/py-cron KAFKA_BROKERS=my-cluster-kafka-brokers:9092
+oc set env BuildConfig/py-cron KAFKA_TOPIC=forecast
+oc set env BuildConfig/py-cron USER_FUNCTION_URI=https://github.com/Gkrumbach07/kafka-openshift-python-emitter/blob/master/examples/emitter.py
+
+oc start-build BuildConfig/py-cron
+
+oc create -f https://raw.githubusercontent.com/Gkrumbach07/kafka-openshift-python-emitter/master/cronJob.yml
+```
 You will need to adjust the `KAFKA_BROKERS` and `KAFKA_TOPICS` variables to
 match your configured Kafka deployment and desired topic. The `SOURCE_URI`
-environment variable allows you to specify the source file to emit from, in
-this example it will use _Alice's Adventures in Wonderland_ from the project
-Gutenberg archives.
+environment variable allows you to specify the source file to emit from.
 
 ## Customizing the emitter function
 
@@ -40,20 +50,6 @@ that will get polled at the rate specified. The user defined function that you
 supply must be a generator that accepts a single argument and returns a string.
 The arguments provided will be a wrapper to the application configuration. For
 an example see the [emitter.py](examples/emitter.py) file.
-
-To utilize an external user defined function it must exist in a file that
-can be downloaded by your continerized application. The environment
-variable `USER_FUNCTION_URI` must contain the URI to the file. Here is an
-example using the previous launch command and the `emitter.py` file from this
-repository:
-
-```
-oc new-app centos/python-36-centos7~https://gitlab.com/bones-brigade/kafka-python-emitter.git \
--e KAFKA_BROKERS=kafka:9092 \
--e KAFKA_TOPIC=bones-brigade \
--e USER_FUNCTION_URI=https://gitlab.com/bones-brigade/kafka-python-emitter/raw/master/examples/emitter.py
---name=emitter
-```
 
 ### User defined function API
 
